@@ -1,0 +1,257 @@
+﻿@using MudBlazor
+@using PasswordGame.Components.Models
+@page "/game"
+@rendermode InteractiveServer
+@inject HttpClient HttpClient
+@inject NavigationManager Nav
+
+<MudContainer MaxWidth="MaxWidth.Medium" Class="mt-5">
+    <MudText Typo="Typo.h3" Align="Align.Center">Type your password...</MudText>
+    <MudInput @bind-Value="password" Placeholder="Enter your password" Class="mt-3" FullWidth="true" Style="width:80%;" />
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" Class="mt-3" OnClick="@CheckPassword">
+        Check Password
+    </MudButton>
+    @if (AlertMessages.Count > 0)
+    {
+        @foreach (var message in AlertMessages)
+        {
+            <MudAlert Severity="Severity.Error" Class="mt-3">
+                @message
+            </MudAlert>
+        }
+        
+    }
+    else
+    {
+        <MudAlert Severity="Severity.Success" Class="mt-3">
+            Password is strong!
+        </MudAlert>
+    }
+
+</MudContainer>
+
+@code {
+    public string password { get; set; } = string.Empty;
+
+    public int stage { get; set; } = 0;
+    public string wordle { get; set; } = string.Empty;
+
+    public string Icon { get; set; } = string.Empty;
+    public List<string> AlertMessages { get; set; } = new List<string>();
+    public List<string> Capitols { get; set; } = new List<string>();
+
+    public List<string> PasswordRequirements { get; set; } = new List<string>
+    {
+        "Password must be at least 8 characters long.",
+        "Must have Uppercase, Lowercase, and Number.",
+        "Your password's numbers should add up to 32",
+        "Password must include special characters.",
+        "Password should include a capitol",
+        "Remember Isaiahs middle name",
+        "Password must include today's date in the format YYYYMMDD",
+        "Include todays wordle solution",
+        "Include the secret word in the URL"
+    };
+
+
+    protected override void OnInitialized()
+    {
+        Task.Run(async () => await GetAllCapitolsAsync());
+        wordle = Task.Run(async () => await GetTodaysWordle()).Result;
+        AlertMessages.Add(PasswordRequirements[0]);
+        base.OnInitialized();
+    }
+
+    public async Task GetAllCapitolsAsync()
+    {
+        var response = await HttpClient.GetFromJsonAsync<List<CapitalModel>>("https://restcountries.com/v3.1/all?fields=capital");
+        if (response != null)
+        {
+            foreach (var capitalModel in response)
+            {
+                if (capitalModel.capital != null && capitalModel.capital.Length > 0)
+                {
+                    Capitols.AddRange(capitalModel.capital);
+                }
+            }
+        }
+    }
+
+    public async Task<string> GetTodaysWordle()
+    {
+        string date = DateTime.Now.ToString("yyyy-MM-dd");
+        var response = await HttpClient.GetFromJsonAsync<WordleModel>($"https://www.nytimes.com/svc/wordle/v2/{date}.json");
+        if (response != null)
+        {
+            return response.solution;
+        }
+        return string.Empty;
+    }
+
+    public void CheckPassword()
+    {
+        if (stage >= 0)
+        {
+            if (password.Length < 8)
+            {
+                Icon = Icons.Material.Filled.Clear;
+                if (!AlertMessages.Contains(PasswordRequirements[0]))
+                {
+                    AlertMessages.Add(PasswordRequirements[0]);
+                }
+            }
+            else
+            {
+                stage = 1;
+                if (!AlertMessages.Contains(PasswordRequirements[1]))
+                {
+                    AlertMessages.Add(PasswordRequirements[1]);
+                }
+                AlertMessages.Remove(PasswordRequirements[0]);
+            }
+        }
+
+        if (stage >= 1)
+        {
+            if (password.Any(char.IsUpper) && password.Any(char.IsLower) && password.Any(char.IsDigit))
+            {
+                stage = 2;
+                if (!AlertMessages.Contains(PasswordRequirements[2]))
+                {
+                    AlertMessages.Add(PasswordRequirements[2]);
+                }
+                AlertMessages.Remove(PasswordRequirements[1]);
+            }
+        }
+
+        if (stage >= 2)
+        {
+            int i = 0;
+            foreach (char c in password)
+            {
+                if (char.IsDigit(c))
+                {
+                    i += Int32.Parse(c.ToString());
+                }
+            }
+
+            if (i == 32)
+            {
+                stage = 3;
+                AlertMessages.Remove(PasswordRequirements[2]);
+                Icon = Icons.Material.Filled.Check;
+            }
+        }
+
+        if (stage >= 3)
+        {
+            if (password.Any(ch => !char.IsLetterOrDigit(ch)))
+            {
+                stage = 4;
+                AlertMessages.Remove(PasswordRequirements[3]);
+                Icon = Icons.Material.Filled.Check;
+            }
+            else
+            {
+                Icon = Icons.Material.Filled.Clear;
+                if (!AlertMessages.Contains(PasswordRequirements[3]))
+                {
+                    AlertMessages.Add(PasswordRequirements[3]);
+                }
+            }
+        }
+
+        // Contains a capitol
+        if (stage >= 4)
+        {
+            if (!AlertMessages.Contains(PasswordRequirements[4]))
+            {
+                AlertMessages.Add(PasswordRequirements[4]);
+            }
+
+            foreach (var capitol in Capitols)
+            {
+                if (password.Contains(capitol))
+                {
+                    stage = 5;
+                    AlertMessages.Remove(PasswordRequirements[4]);
+                    Icon = Icons.Material.Filled.Check;
+                    break;
+                }
+            }
+        }
+
+        if (stage >= 5)
+        {
+            if (password.Contains("James"))
+            {
+                stage = 6;
+                AlertMessages.Remove(PasswordRequirements[5]);
+                Icon = Icons.Material.Filled.Check;
+            }
+            else
+            {
+                Icon = Icons.Material.Filled.Clear;
+                if (!AlertMessages.Contains(PasswordRequirements[5]))
+                {
+                    AlertMessages.Add(PasswordRequirements[5]);
+                }
+            }
+        }
+
+        if (stage >= 6)
+        {
+            string todaysDate = DateTime.Now.ToString("yyyyMMdd");
+            if (password.Contains(todaysDate))
+            {
+                stage = 7;
+                AlertMessages.Remove(PasswordRequirements[6]);
+                Icon = Icons.Material.Filled.Check;
+            }
+            else
+            {
+                Icon = Icons.Material.Filled.Clear;
+                if (!AlertMessages.Contains(PasswordRequirements[6]))
+                {
+                    AlertMessages.Add(PasswordRequirements[6]);
+                }
+            }
+        }
+
+        if (stage >= 7)
+        {
+            if (password.ToLower().Contains(wordle.ToLower()))
+            {
+                stage = 8;
+                AlertMessages.Remove(PasswordRequirements[7]);
+                Icon = Icons.Material.Filled.Check;
+            }
+            else
+            {
+                Icon = Icons.Material.Filled.Clear;
+                if (!AlertMessages.Contains(PasswordRequirements[7]))
+                {
+                    AlertMessages.Add(PasswordRequirements[7]);
+                }
+            }
+        }
+
+        if (stage >= 8)
+        {
+            if (password.Contains("game"))
+            {
+                stage = 9;
+                AlertMessages.Remove(PasswordRequirements[8]);
+                Icon = Icons.Material.Filled.Check;
+            }
+            else
+            {
+                Icon = Icons.Material.Filled.Clear;
+                if (!AlertMessages.Contains(PasswordRequirements[8]))
+                {
+                    AlertMessages.Add(PasswordRequirements[8]);
+                }
+            }
+        }
+    }
+}
