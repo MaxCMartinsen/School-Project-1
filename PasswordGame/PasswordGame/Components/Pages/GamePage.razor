@@ -52,8 +52,7 @@
         "Password should include a capitol",
         "Remember Isaiahs middle name",
         "Password must include today's date in the format YYYYMMDD",
-        "Include todays wordle solution",
-        "Include the secret word in the URL"
+        "Include todays wordle solution"
     };
 
 
@@ -235,24 +234,6 @@
                 if (!AlertMessages.Contains(PasswordRequirements[7]))
                 {
                     AlertMessages.Add(PasswordRequirements[7]);
-                }
-            }
-        }
-
-        if (stage >= 8)
-        {
-            if (password.Contains("game"))
-            {
-                stage = 9;
-                AlertMessages.Remove(PasswordRequirements[8]);
-                Icon = Icons.Material.Filled.Check;
-            }
-            else
-            {
-                Icon = Icons.Material.Filled.Clear;
-                if (!AlertMessages.Contains(PasswordRequirements[8]))
-                {
-                    AlertMessages.Add(PasswordRequirements[8]);
                 }
             }
         }
